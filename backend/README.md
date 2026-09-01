@@ -1,0 +1,1 @@
+Backend integration point. Connect authentication, database, object storage, AI inference, FFmpeg/GPU render workers, queues and signed payment webhooks here. Never expose provider secrets to the browser.

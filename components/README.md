@@ -1,0 +1,1 @@
+Component extension point for SmartPoint workspaces. The main shell is currently self-contained in app/page.tsx so the project remains easy to deploy.
