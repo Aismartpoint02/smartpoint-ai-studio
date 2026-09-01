@@ -33,10 +33,49 @@ export default function Home(){
   const [minutes,setMinutes]=useState("10");
   const [notice,setNotice]=useState("Ready");
   const [tab,setTab]=useState("All");
+  const [videoUrl,setVideoUrl]=useState<string | null>(null);
+  const [busy,setBusy]=useState(false);
 
-  function create(){
-    setNotice("Project created in the workspace. Connect your AI provider and render worker for real generation.");
+  async function create(){
+    if(!prompt.trim()){
+      setNotice("Describe the video you want to create first.");
+      setActive("AI Video");
+      return;
+    }
+
+    setBusy(true);
+    setVideoUrl(null);
+    setNotice("Sending your prompt to the AI video generator…");
     setActive("AI Video");
+
+    try{
+      const res=await fetch("/api/generate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          prompt,
+          language:lang,
+          durationMinutes:Number(minutes)
+        })
+      });
+
+      const data=await res.json();
+
+      if(!res.ok){
+        throw new Error(data?.error || "Generation failed");
+      }
+
+      if(data.videoUrl){
+        setVideoUrl(data.videoUrl);
+        setNotice("Video generated successfully.");
+      }else{
+        setNotice(data?.message || "Generation completed.");
+      }
+    }catch(error){
+      setNotice(error instanceof Error ? error.message : "Generation failed.");
+    }finally{
+      setBusy(false);
+    }
   }
 
   return <div className="app">
@@ -61,20 +100,30 @@ export default function Home(){
       <main>
         <section className="hero">
           <div>
-            <div className="eyebrow">SMARTPOINT AI STUDIO • V26</div>
+            <div className="eyebrow">SMARTPOINT AI STUDIO • V27</div>
             <h1>Everything you need<br/><em>to create.</em></h1>
             <p>Produce, edit, enhance, teach, publish and monetize professional video from one modern workspace.</p>
             <div className="heroBtns"><button className="primary" onClick={()=>setActive("AI Video")}>Start creating →</button><button onClick={()=>setActive("Pro Editor")}>Open editor</button></div>
           </div>
+
           <div className="createCard">
-            <div className="cardtop"><b>AI video creator</b><span>NEW PROJECT</span></div>
+            <div className="cardtop"><b>AI video creator</b><span>LIVE GENERATION</span></div>
             <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Describe what you want to make... e.g. a 10-minute Somali documentary with narration, B-roll and captions." />
             <div className="controls">
-              <select value={lang} onChange={e=>setLang(e.target.value)}><option>English</option><option>Somali</option><option>Arabic</option><option>Swahili</option><option>French</option><option>Spanish</option></select>
-              <select value={minutes} onChange={e=>setMinutes(e.target.value)}><option>1 min</option><option>5 min</option><option>10 min</option><option>30 min</option><option>60 min</option><option>180 min</option></select>
-              <button className="primary" onClick={create}>Create</button>
+              <select value={lang} onChange={e=>setLang(e.target.value)}>
+                <option>English</option><option>Somali</option><option>Arabic</option><option>Swahili</option><option>French</option><option>Spanish</option>
+              </select>
+              <select value={minutes} onChange={e=>setMinutes(e.target.value)}>
+                <option value="1">1 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="30">30 min</option><option value="60">60 min</option><option value="180">180 min</option>
+              </select>
+              <button className="primary" onClick={create} disabled={busy}>{busy ? "Generating…" : "Create"}</button>
             </div>
             <small>{notice}</small>
+
+            {videoUrl && <div style={{marginTop:16}}>
+              <video controls src={videoUrl} style={{width:"100%",borderRadius:12}} />
+              <div style={{marginTop:8}}><a href={videoUrl} target="_blank" rel="noreferrer">Open generated video →</a></div>
+            </div>}
           </div>
         </section>
 
@@ -85,7 +134,7 @@ export default function Home(){
         <section className="section">
           <div className="sectionhead"><div><h2>Creative suite</h2><p>Every major production workflow, connected.</p></div><div className="tabs">{["All","Create","Edit","Publish","Business"].map(x=><button className={tab===x?"selected":""} key={x} onClick={()=>setTab(x)}>{x}</button>)}</div></div>
           <div className="grid">
-            {tools.map(([icon,title,desc],i)=><article className="tool" key={title}>
+            {tools.map(([icon,title,desc])=><article className="tool" key={title}>
               <div className="toolIcon">{icon}</div><h3>{title}</h3><p>{desc}</p><button onClick={()=>setActive(title)}>Open workspace <span>→</span></button>
             </article>)}
           </div>
