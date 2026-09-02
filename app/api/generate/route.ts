@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
-
 const MODEL = "black-forest-labs/flux-3-video";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-
-    const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-    const language = typeof body?.language === "string" ? body.language : "English";
-    const durationMinutes = Number(body?.durationMinutes || 1);
+    const prompt = String(body?.prompt ?? "").trim();
+    const language = String(body?.language ?? "English").trim();
+    const durationMinutes = Number(body?.durationMinutes ?? 1);
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
+      return NextResponse.json({ error: "Please enter a video prompt." }, { status: 400 });
     }
 
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -21,18 +18,14 @@ export async function POST(request: Request) {
 
     if (!accountId || !apiToken) {
       return NextResponse.json(
-        {
-          error:
-            "AI provider is not connected yet. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN as server-side secrets."
-        },
-        { status: 503 }
+        { error: "Cloudflare AI is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN as Worker secrets." },
+        { status: 500 }
       );
     }
 
-    // FLUX 3 Video currently supports 5–20 second clips.
-    // The 1–180 minute SmartPoint UI is preserved; long-form rendering
-    // will be assembled from multiple generated scenes in the next stage.
-    const duration = durationMinutes <= 1 ? 5 : durationMinutes <= 5 ? 10 : 20;
+    const clipSeconds =
+      durationMinutes <= 1 ? 5 :
+      durationMinutes <= 5 ? 10 : 20;
 
     const response = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`,
@@ -48,30 +41,27 @@ export async function POST(request: Request) {
             mode: "t2v",
             prompt: `${prompt}\nSpoken language: ${language}.`,
             resolution: "hd",
-            duration,
+            duration: clipSeconds,
             generate_audio: true,
           },
         }),
       }
     );
 
-    if (!response.ok) {
-      const detail = await response.text();
+    const data = await response.json();
+
+    if (!response.ok || data?.success === false) {
       return NextResponse.json(
-        {
-          error: `Cloudflare AI error (${response.status}).`,
-          detail: detail.slice(0, 1000),
-        },
-        { status: 502 }
+        { error: data?.errors?.[0]?.message || "Cloudflare AI video generation failed." },
+        { status: response.status || 502 }
       );
     }
 
-    const data = await response.json();
     const videoUrl = data?.result?.video;
 
     if (!videoUrl) {
       return NextResponse.json(
-        { error: "Cloudflare AI completed without returning a video URL.", provider: data },
+        { error: "Cloudflare AI completed the request but returned no video URL." },
         { status: 502 }
       );
     }
@@ -79,8 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       videoUrl,
       model: MODEL,
-      clipSeconds: duration,
-      message: "AI video clip generated successfully.",
+      clipSeconds,
+      message: "AI video generated successfully.",
     });
   } catch (error) {
     return NextResponse.json(
