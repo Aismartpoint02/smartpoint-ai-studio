@@ -1,0 +1,32 @@
+SmartPoint AI Studio — Google One-Click Login
+
+Included:
+- /api/auth/google?mode=start — starts Google OAuth 2.0 Authorization Code flow
+- /api/auth/google?mode=callback — verifies state, exchanges code, reads OpenID Connect user info
+- /api/auth/google?mode=session — checks the signed HttpOnly session cookie
+- /api/auth/google?mode=logout — clears the session
+- Sign-in button wired into the SmartPoint UI
+
+Required server-side secrets (NEVER put these in page.tsx):
+GOOGLE_CLIENT_ID=your Google OAuth web client ID
+GOOGLE_CLIENT_SECRET=your Google OAuth web client secret
+
+Optional:
+GOOGLE_REDIRECT_URI=https://YOUR-DOMAIN/api/auth/google?mode=callback
+If omitted, the app derives the callback URL from the incoming request.
+
+Google Cloud setup:
+1. Create an OAuth 2.0 Client ID for a Web application.
+2. Add the exact production callback URL under Authorized redirect URIs.
+3. Add the production origin under Authorized JavaScript origins if your Google configuration requires it.
+4. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server/Worker runtime secrets.
+5. Redeploy and click “Continue with Google”.
+
+Security:
+- OAuth state is stored in an HttpOnly cookie and checked on callback.
+- The session is an HttpOnly, Secure, SameSite=Lax cookie signed with GOOGLE_CLIENT_SECRET.
+- The Google `sub` claim is retained as the stable user identifier; email is not used as the primary identifier.
+- No Google secret is shipped to the browser.
+
+Production note:
+This implements the real Google sign-in flow, but it cannot authenticate until the Google Cloud OAuth client credentials are configured in the deployment environment.
