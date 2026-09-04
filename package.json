@@ -1,22 +1,26 @@
 {
   "name": "smartpoint-ai-studio",
-  "version": "26.0.0",
+  "version": "30.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
     "start": "next start",
-    "lint": "next lint"
+    "typecheck": "tsc --noEmit",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "next": "15.5.2",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "@opennextjs/cloudflare": "latest"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6"
+    "@types/react-dom": "^19.1.6",
+    "wrangler": "latest"
   }
 }
